@@ -1,0 +1,154 @@
+<!-- Copyright start
+  MIT License
+  Copyright (c) 2024 Fortinet Inc
+  Copyright end -->
+<form data-ng-submit="save()" class="noMargin" name="editSocreportForm" novalidate>
+    <div class="modal-header">
+        <h3 class="modal-title col-md-9">Edit SOC Report Widget</h3>
+        <button type="button" class="close" data-ng-click="cancel()" data-dismiss="modal" aria-label="Close"
+            id="closeEditSocreportForm">
+            <div aria-hidden="true" class="version-button">+</div>
+        </button>
+    </div>
+    <div class="modal-body">
+        <div class="typehead-field" name="htmlReportForm">
+            <h8>Displays HTML content from a JSON or text field in the record</h8>
+
+            <div class="form-group dashed-border-section" style="position:relative;">
+                <div style="padding: 12px;">
+                    <div class="row margin-bottom-sm">
+                        <div class="col-md-8">
+                            <div class="form-group margin-bottom-0"
+                                data-ng-class="{ 'has-error': editSocreportForm.title.$invalid && editSocreportForm.title.$touched }">
+                                <label for="title" class="control-label margin-top-sm">Widget Title<span
+                                        class="text-danger">*</span></label>
+                                <input id="title" name="title" type="text" class="form-control"
+                                    data-ng-model="config.title" required placeholder="Enter widget title">
+                                <div data-cs-messages="editSocreportForm.title"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row margin-bottom-sm">
+                        <div class="col-md-8">
+                            <div class="form-group margin-bottom-0"
+                                data-ng-class="{ 'has-error': editSocreportForm.selectedField.$invalid && editSocreportForm.selectedField.$touched }">
+                                <label for="selectedField" class="control-label margin-top-sm">Data Source Field<span
+                                        class="text-danger">*</span></label>
+                                <span data-uib-tooltip="Select the field that contains the JSON data or HTML content to display"
+                                    data-tooltip-append-to-body="true">
+                                    <i class="margin-left-sm icon icon-information font-Size-13"></i>
+                                </span>
+                                <div class="cs-select">
+                                    <select name="selectedField" id="selectedField" class="form-control"
+                                        data-ng-model="config.selectedField"
+                                        data-ng-options="field.name as (field.title + ' (' + field.type + ')') for field in fields"
+                                        required>
+                                        <option value="">Select a field</option>
+                                    </select>
+                                    <span class="fa fa-sort-desc"></span>
+                                </div>
+                                <div data-cs-messages="editSocreportForm.selectedField"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row margin-bottom-sm">
+                        <div class="col-md-8">
+                            <div class="form-group margin-bottom-0"
+                                data-ng-class="{ 'has-error': editSocreportForm.changeNumberField.$invalid && editSocreportForm.changeNumberField.$touched }">
+                                <label for="changeNumberField" class="control-label margin-top-sm">Change Number Field<span
+                    class="text-danger">*</span></label>
+                                <span data-uib-tooltip="Select the field that contains the change number to filter by (e.g., CHG0123456)"
+                data-tooltip-append-to-body="true">
+                <i class="margin-left-sm icon icon-information font-Size-13"></i>
+            </span>
+                                <div class="cs-select">
+                                    <select name="changeNumberField" id="changeNumberField" class="form-control"
+                    data-ng-model="config.changeNumberField"
+                    data-ng-options="field.name as (field.title + ' (' + field.type + ')') for field in changeNumberFields"
+                    required>
+                    <option value="">Select change number field</option>
+                </select>
+                                    <span class="fa fa-sort-desc"></span>
+                                </div>
+                                <div data-cs-messages="editSocreportForm.changeNumberField"></div>
+                                <small class="text-muted">This field should contain the change number to search for in device revisions</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row margin-bottom-sm" data-ng-if="fields.length === 0">
+                        <div class="col-md-12">
+                            <div class="alert alert-warning">
+                                <i class="icon icon-warning margin-right-sm"></i>
+                                No text or textarea fields available. This widget must be configured from a record
+                                detail page.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="form-group dashed-border-section" style="position:relative;">
+                <div style="padding: 12px;">
+                    <h8>Display Options</h8>
+
+                    <div class="row margin-bottom-sm">
+                        <div class="col-md-8">
+                            <div class="checkbox-inline">
+                                <label for="enableSanitization" class="control-label">
+                                    <input id="enableSanitization" type="checkbox" name="enableSanitization"
+                                        data-ng-model="config.enableSanitization">
+                                    <span class="display-inline-block margin-top-1">Enable HTML Sanitization</span>
+                                </label>
+                                <span data-uib-tooltip="Sanitize HTML content for security (recommended for untrusted content)"
+                                    data-tooltip-append-to-body="true">
+                                    <i class="margin-left-sm icon icon-information font-Size-13"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row margin-bottom-sm">
+                        <div class="col-md-8">
+                            <div class="checkbox-inline">
+                                <label for="showJsonPath" class="control-label">
+                                    <input id="showJsonPath" type="checkbox" name="showJsonPath"
+                                        data-ng-model="config.showJsonPath">
+                                    <span class="display-inline-block margin-top-1">Extract from JSON Path</span>
+                                </label>
+                                <span data-uib-tooltip="If enabled, specify a JSON path to extract specific content from JSON data"
+                                    data-tooltip-append-to-body="true">
+                                    <i class="margin-left-sm icon icon-information font-Size-13"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row margin-bottom-sm" data-ng-if="config.showJsonPath">
+                        <div class="col-md-8">
+                            <div class="form-group margin-bottom-0">
+                                <label for="jsonPath" class="control-label margin-top-sm">JSON Path</label>
+                                <input id="jsonPath" name="jsonPath" type="text" class="form-control"
+                                    data-ng-model="config.jsonPath"
+                                    placeholder="e.g., data.html_content or attachments[0].content">
+                                <small class="text-muted">Use dot notation to access nested properties</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button id="edit-widget-save" type="submit" class="btn btn-sm btn-primary">
+            <i class="icon icon-check margin-right-sm"></i>Save
+        </button>
+        <button id="edit-widget-cancel" type="button" class="btn btn-sm btn-default" data-ng-click="cancel()">
+            <i class="icon icon-close margin-right-sm"></i>Close
+        </button>
+    </div>
+</form>
