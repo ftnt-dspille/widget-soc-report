@@ -15,16 +15,8 @@
         $scope.save = save;
         $scope.config = config;
         $scope.loadFields = loadFields;
+        $scope.page = $state.params.page;
 
-
-        // Debug variables
-        $scope.debugInfo = {
-            currentModule: null,
-            totalFields: 0,
-            validFields: 0,
-            entityLoaded: false,
-            error: null
-        };
 
         // Initialize config defaults
         if (!$scope.config.title) {
@@ -40,7 +32,6 @@
         $scope.fields = [];
         $scope.changeNumberFields = [];
         $scope.currentModule = $state.params.module;
-        $scope.debugInfo.currentModule = $scope.currentModule;
 
         console.log('EditSocreport100DevCtrl initialized');
         console.log('Current module from $state.params:', $scope.currentModule);
@@ -50,7 +41,6 @@
             console.log('loadFields() called with module:', $scope.currentModule);
 
             if (!$scope.currentModule) {
-                $scope.debugInfo.error = 'No module found in $state.params.module';
                 console.error('No current module available');
                 toaster.warning({
                     body: 'No module detected. This widget must be configured from a record detail page.'
@@ -63,13 +53,11 @@
 
             entity.loadFields().then(function () {
                 console.log('Entity fields loaded successfully');
-                $scope.debugInfo.entityLoaded = true;
 
                 // Get all fields
                 var formFields = entity.getFormFields();
                 console.log('Form fields retrieved:', formFields);
                 console.log('Number of form fields:', Object.keys(formFields).length);
-                $scope.debugInfo.totalFields = Object.keys(formFields).length;
 
                 // Reset fields array
                 $scope.fields = [];
@@ -97,7 +85,6 @@
                     }
                 });
 
-                $scope.debugInfo.validFields = validFieldCount;
                 console.log('Total valid fields added to dropdown:', $scope.fields.length);
                 console.log('Valid field types found:', validFieldCount);
                 console.log('Fields for dropdown:', $scope.fields);
@@ -124,7 +111,6 @@
 
             }).catch(function (error) {
                 console.error('Error loading entity fields:', error);
-                $scope.debugInfo.error = 'Failed to load fields: ' + (error.message || error);
 
                 // Use $timeout for error handling too
                 if (!$scope.$phase && !$scope.$root.$phase) {
