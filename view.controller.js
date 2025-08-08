@@ -6,11 +6,11 @@
 (function () {
     angular
         .module('cybersponse')
-        .controller('socreport100DevCtrl', socreport100DevCtrl);
+        .controller('socreport100Ctrl', socreport100Ctrl);
 
-    socreport100DevCtrl.$inject = ['$scope', '$state', 'Entity', '$q', '$sce', 'toaster'];
+    socreport100Ctrl.$inject = ['$scope', '$state', 'Entity', '$q', 'toaster', '$http', 'API', 'Query', 'Modules'];
 
-    function socreport100DevCtrl($scope, $state, Entity, $q, $sce, toaster) {
+    function socreport100Ctrl($scope, $state, Entity, $q, toaster, $http, API, Query, Modules) {
         $scope.loading = true;
         $scope.error = null;
         $scope.deviceSummary = [];
@@ -19,14 +19,37 @@
         $scope.totalRevisions = 0;
         $scope.totalMatches = 0;
         $scope.changeNumber = '';
+        $scope.recordInfo = {};
 
         // Get module and record ID from state params
         $scope.module = $state.params.module;
         $scope.recordId = $state.params.id;
 
+        // Determine widget context
+        $scope.isViewPanel = $state.current && $state.current.name.indexOf('viewPanel') !== -1;
+        $scope.isDashboard = $state.current && $state.current.name.indexOf('dashboard') !== -1;
+        $scope.isReporting = $state.current && $state.current.name.indexOf('reporting') !== -1;
+
         function loadRecordData() {
+            // Determine usage mode
+            var usageMode = $scope.config.usageMode || 'auto';
+            if (usageMode === 'auto') {
+                usageMode = $scope.isViewPanel ? 'detail' : 'query';
+            }
+
+            console.log('Loading record data with usage mode:', usageMode);
+            console.log('Widget context - isViewPanel:', $scope.isViewPanel, 'isDashboard:', $scope.isDashboard, 'isReporting:', $scope.isReporting);
+
+            if (usageMode === 'detail') {
+                loadRecordFromDetailPage();
+            } else {
+                loadRecordFromQuery();
+            }
+        }
+
+        function loadRecordFromDetailPage() {
             if (!$scope.module || !$scope.recordId) {
-                $scope.error = 'This widget can only be used on record detail pages.';
+                $scope.error = 'This widget can only be used on record detail pages when in detail mode.';
                 $scope.loading = false;
                 return;
             }
@@ -37,23 +60,115 @@
                 return;
             }
 
+            console.log('Loading record from detail page - Module:', $scope.module, 'ID:', $scope.recordId);
+
             var entity = new Entity($scope.module);
             entity.get($scope.recordId, { $relationships: true }).then(function() {
                 $scope.entity = entity;
+                $scope.recordInfo = {
+                    module: $scope.module,
+                    id: $scope.recordId,
+                    loadMethod: 'Detail Page'
+                };
 
-                // Get the change number from the configured field
-                if ($scope.config.changeNumberField) {
-                    var changeNumberValue = $scope.entity.fields[$scope.config.changeNumberField];
-                    if (changeNumberValue && changeNumberValue.value) {
-                        $scope.changeNumber = changeNumberValue.value;
-                    }
-                }
-
-                processReportData();
+                extractDataFromEntity();
             }).catch(function(error) {
                 $scope.error = 'Failed to load record data: ' + (error.message || 'Unknown error');
                 $scope.loading = false;
             });
+        }
+
+        function loadRecordFromQuery() {
+            var moduleToQuery = $scope.config.module;
+
+            if (!moduleToQuery) {
+                $scope.error = 'No module specified in widget configuration for dashboard/report usage.';
+                $scope.loading = false;
+                return;
+            }
+
+            if (!$scope.config.selectedField) {
+                $scope.error = 'No field selected in widget configuration.';
+                $scope.loading = false;
+                return;
+            }
+
+            if (!$scope.config.query || !$scope.config.query.filters || $scope.config.query.filters.length === 0) {
+                $scope.error = 'No query filters configured to identify the record.';
+                $scope.loading = false;
+                return;
+            }
+
+            console.log('Loading record from query - Module:', moduleToQuery);
+            console.log('Query config:', $scope.config.query);
+
+            // Build query object
+            var queryObject = {
+                sort: [],
+                limit: 1, // We only need the first matching record
+                logic: $scope.config.query.logic || 'AND',
+                filters: $scope.config.query.filters || [],
+                $relationships: true
+            };
+
+            // Add fields we need to select
+            var fieldsToSelect = [$scope.config.selectedField];
+            if ($scope.config.changeNumberField) {
+                fieldsToSelect.push($scope.config.changeNumberField);
+            }
+            queryObject.__selectFields = fieldsToSelect.join(',');
+
+            var query = new Query(queryObject);
+
+            // Make API call to find the record
+            $http.post(API.QUERY + moduleToQuery, query.getQuery(true)).then(function(response) {
+                if (response.data && response.data['hydra:member'] && response.data['hydra:member'].length > 0) {
+                    var record = response.data['hydra:member'][0];
+                    console.log('Found record via query:', record);
+
+                    // Create a mock entity-like object for consistency
+                    $scope.entity = {
+                        fields: {}
+                    };
+
+                    // Map the record data to the entity structure
+                    fieldsToSelect.forEach(function(fieldName) {
+                        if (record[fieldName] !== undefined) {
+                            $scope.entity.fields[fieldName] = {
+                                value: record[fieldName]
+                            };
+                        }
+                    });
+
+                    $scope.recordInfo = {
+                        module: moduleToQuery,
+                        id: record['@id'] || record.uuid || record.id || 'Unknown',
+                        loadMethod: 'Query',
+                        queryFilters: $scope.config.query.filters.length
+                    };
+
+                    extractDataFromEntity();
+                } else {
+                    $scope.error = 'No records found matching the specified query filters.';
+                    $scope.loading = false;
+                }
+            }).catch(function(error) {
+                console.error('Error querying for record:', error);
+                $scope.error = 'Failed to query for record: ' + (error.message || 'Unknown error');
+                $scope.loading = false;
+            });
+        }
+
+        function extractDataFromEntity() {
+            // Get the change number from the configured field
+            if ($scope.config.changeNumberField) {
+                var changeNumberValue = $scope.entity.fields[$scope.config.changeNumberField];
+                if (changeNumberValue && changeNumberValue.value) {
+                    $scope.changeNumber = changeNumberValue.value;
+                }
+            }
+
+            processReportData();
         }
 
         function processReportData() {
@@ -71,21 +186,75 @@
 
                 // Parse JSON data
                 if (typeof rawValue === 'string') {
-                    jsonData = JSON.parse(rawValue);
+                    try {
+                        jsonData = JSON.parse(rawValue);
+                    } catch (parseError) {
+                        $scope.error = 'Invalid JSON data in the selected field: ' + parseError.message;
+                        $scope.loading = false;
+                        return;
+                    }
                 } else {
                     jsonData = rawValue;
                 }
 
-                // Process the new data structure
+                // Apply JSON path extraction if configured
+                if ($scope.config.showJsonPath && $scope.config.jsonPath) {
+                    try {
+                        jsonData = extractFromJsonPath(jsonData, $scope.config.jsonPath);
+                        if (jsonData === undefined || jsonData === null) {
+                            $scope.error = 'No data found at the specified JSON path: ' + $scope.config.jsonPath;
+                            $scope.loading = false;
+                            return;
+                        }
+                    } catch (pathError) {
+                        $scope.error = 'Error extracting data from JSON path: ' + pathError.message;
+                        $scope.loading = false;
+                        return;
+                    }
+                }
+
+                // Process the data structure
                 processDeviceSummary(jsonData);
                 processMatchingRecords(jsonData);
 
                 $scope.loading = false;
 
             } catch (error) {
+                console.error('Error processing report data:', error);
                 $scope.error = 'Error processing report data: ' + error.message;
                 $scope.loading = false;
             }
+        }
+
+        function extractFromJsonPath(data, path) {
+            // Simple JSON path implementation using dot notation
+            var parts = path.split('.');
+            var current = data;
+
+            for (var i = 0; i < parts.length; i++) {
+                var part = parts[i];
+
+                // Handle array notation like "items[0]"
+                var arrayMatch = part.match(/^([^[]+)\[(\d+)\]$/);
+                if (arrayMatch) {
+                    var arrayName = arrayMatch[1];
+                    var arrayIndex = parseInt(arrayMatch[2]);
+
+                    if (current[arrayName] && Array.isArray(current[arrayName]) && current[arrayName][arrayIndex] !== undefined) {
+                        current = current[arrayName][arrayIndex];
+                    } else {
+                        return undefined;
+                    }
+                } else {
+                    if (current && typeof current === 'object' && current[part] !== undefined) {
+                        current = current[part];
+                    } else {
+                        return undefined;
+                    }
+                }
+            }
+
+            return current;
         }
 
         function processDeviceSummary(jsonData) {
@@ -228,16 +397,17 @@
             });
         };
 
-        // Highlight CHG numbers in text
-        $scope.highlightCHG = function(text) {
-            if (!text) return '';
-            return $sce.trustAsHtml(text.replace(/CHG\d+/gi, '<span class="chg-highlight">$&</span>'));
-        };
 
         // Refresh data
         $scope.refreshData = function() {
             $scope.loading = true;
             $scope.error = null;
+            $scope.deviceSummary = [];
+            $scope.matchingRecords = [];
+            $scope.totalDevices = 0;
+            $scope.totalRevisions = 0;
+            $scope.totalMatches = 0;
+            $scope.changeNumber = '';
             loadRecordData();
         };
 
@@ -246,12 +416,30 @@
             return $scope.deviceSummary.length > 0 || $scope.matchingRecords.length > 0;
         };
 
+        // Get usage mode display text
+        $scope.getUsageModeText = function() {
+            if ($scope.isViewPanel) {
+                return 'Record Detail View';
+            } else if ($scope.isDashboard) {
+                return 'Dashboard';
+            } else if ($scope.isReporting) {
+                return 'Reporting';
+            } else {
+                return 'Unknown Context';
+            }
+        };
+
         function _init() {
             if (!$scope.config) {
                 $scope.error = 'Widget configuration not found.';
                 $scope.loading = false;
                 return;
             }
+
+            console.log('SOC Report Widget initializing...');
+            console.log('Config:', $scope.config);
+            console.log('State params:', $state.params);
+            console.log('Current state:', $state.current);
 
             loadRecordData();
         }

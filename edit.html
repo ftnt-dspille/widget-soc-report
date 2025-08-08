@@ -12,10 +12,21 @@
     </div>
     <div class="modal-body">
         <div class="typehead-field" name="htmlReportForm">
-            <h8>Displays HTML content from a JSON or text field in the record</h8>
+            <!-- Context Information -->
+            <div class="alert alert-info margin-bottom-lg">
+                <i class="icon icon-info-circle margin-right-sm"></i>
+                <strong>Widget Context:</strong> {{ debugInfo.widgetContext }}
+                <span data-ng-if="isViewPanel">- This widget will display data from the current record</span>
+                <span data-ng-if="!isViewPanel">- This widget will query for a record based on filters</span>
+            </div>
 
+            <h8>Displays SOC revision report data from a JSON field in the record</h8>
+
+            <!-- Basic Configuration -->
             <div class="form-group dashed-border-section" style="position:relative;">
                 <div style="padding: 12px;">
+                    <h6>Basic Configuration</h6>
+
                     <div class="row margin-bottom-sm">
                         <div class="col-md-8">
                             <div class="form-group margin-bottom-0"
@@ -29,13 +40,52 @@
                         </div>
                     </div>
 
+                    <!-- Module Selection (for Dashboard/Report usage) -->
+                    <div class="row margin-bottom-sm" data-ng-if="!isViewPanel">
+                        <div class="col-md-8">
+                            <div class="form-group margin-bottom-0"
+                                 data-ng-class="{ 'has-error': editSocreportForm.module.$invalid && editSocreportForm.module.$touched }">
+                                <label for="module" class="control-label margin-top-sm">Module<span
+                                        class="text-danger">*</span></label>
+                                <span data-uib-tooltip="Select the module type that contains the SOC report data"
+                                      data-tooltip-append-to-body="true">
+                                    <i class="margin-left-sm icon icon-information font-Size-13"></i>
+                                </span>
+                                <div class="cs-select">
+                                    <select name="module" id="module" class="form-control"
+                                            data-ng-model="config.module"
+                                            data-ng-options="module.type as module.name for module in modules"
+                                            data-ng-change="onModuleChange()"
+                                            data-ng-required="!isViewPanel">
+                                        <option value="">Select a module</option>
+                                    </select>
+                                    <span class="fa fa-sort-desc"></span>
+                                </div>
+                                <div data-cs-messages="editSocreportForm.module"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Show selected module for View Panel -->
+                    <div class="row margin-bottom-sm" data-ng-if="isViewPanel && currentModule">
+                        <div class="col-md-8">
+                            <div class="form-group margin-bottom-0">
+                                <label class="control-label margin-top-sm">Current Module</label>
+                                <div class="form-control-static">
+                                    <span class="label label-info">{{ currentModule }}</span>
+                                    <small class="text-muted margin-left-sm">Using current record's module</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row margin-bottom-sm">
                         <div class="col-md-8">
                             <div class="form-group margin-bottom-0"
                                  data-ng-class="{ 'has-error': editSocreportForm.selectedField.$invalid && editSocreportForm.selectedField.$touched }">
                                 <label for="selectedField" class="control-label margin-top-sm">Data Source Field<span
                                         class="text-danger">*</span></label>
-                                <span data-uib-tooltip="Select the field that contains the JSON data or HTML content to display"
+                                <span data-uib-tooltip="Select the field that contains the JSON data with SOC report information"
                                       data-tooltip-append-to-body="true">
                                     <i class="margin-left-sm icon icon-information font-Size-13"></i>
                                 </span>
@@ -62,8 +112,8 @@
                                             class="text-danger">*</span></label>
                                 <span data-uib-tooltip="Select the field that contains the change number to filter by (e.g., CHG0123456)"
                                       data-tooltip-append-to-body="true">
-                <i class="margin-left-sm icon icon-information font-Size-13"></i>
-            </span>
+                                    <i class="margin-left-sm icon icon-information font-Size-13"></i>
+                                </span>
                                 <div class="cs-select">
                                     <select name="changeNumberField" id="changeNumberField" class="form-control"
                                             data-ng-model="config.changeNumberField"
@@ -80,13 +130,65 @@
                         </div>
                     </div>
 
-                    <div class="row margin-bottom-sm" data-ng-if="fields.length === 0">
+                    <div class="row margin-bottom-sm" data-ng-if="fields.length === 0 && config.module">
                         <div class="col-md-12">
                             <div class="alert alert-warning">
                                 <i class="icon icon-warning margin-right-sm"></i>
-                                No text or textarea fields available. This widget must be configured from a record
-                                detail page.
+                                No compatible fields found in the selected module.
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Query Configuration (for Dashboard/Report usage) -->
+            <div class="form-group dashed-border-section" data-ng-if="!isViewPanel" style="position:relative;">
+                <div style="padding: 12px;">
+                    <h6>Record Selection Query</h6>
+                    <p class="text-muted">Configure filters to identify which record contains the SOC report data</p>
+
+                    <div class="form-group" data-ng-if="config.module && fields.length > 0">
+                        <label for="resource" class="control-label">Filter Criteria<span
+                                class="text-danger">*</span></label>
+                        <span data-uib-tooltip="Define filters to identify the specific record containing the SOC report data"
+                              data-tooltip-append-to-body="true">
+                            <i class="margin-left-sm icon icon-information font-Size-13"></i>
+                        </span>
+                        <div data-cs-conditional data-mode="'queryFilters'"
+                             data-fields="fields" data-ng-model="config.query"
+                             data-parent-form="editSocreportForm"
+                             data-enable-expression="true"
+                             data-form-name="'editSocreportForm'"></div>
+                        <small class="text-muted">Example: Filter by a specific record ID, name, or other identifying
+                            field</small>
+                    </div>
+
+                    <div class="alert alert-info" data-ng-if="!config.module">
+                        <i class="icon icon-info-circle margin-right-sm"></i>
+                        Please select a module first to configure query filters.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debug Information (only show in development) -->
+            <div class="form-group dashed-border-section" data-ng-if="debugInfo" style="position:relative;">
+                <div style="padding: 12px;">
+                    <h6>Debug Information</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted">
+                                <strong>Context:</strong> {{ debugInfo.widgetContext }}<br>
+                                <strong>Current Module:</strong> {{ debugInfo.currentModule || 'None' }}<br>
+                                <strong>Selected Module:</strong> {{ config.module || 'None' }}<br>
+                                <strong>Total Fields:</strong> {{ debugInfo.totalFields }}<br>
+                                <strong>Valid Fields:</strong> {{ debugInfo.validFields }}<br>
+                                <strong>Entity Loaded:</strong> {{ debugInfo.entityLoaded }}
+                            </small>
+                        </div>
+                        <div class="col-md-6" data-ng-if="debugInfo.error">
+                            <small class="text-danger">
+                                <strong>Error:</strong> {{ debugInfo.error }}
+                            </small>
                         </div>
                     </div>
                 </div>

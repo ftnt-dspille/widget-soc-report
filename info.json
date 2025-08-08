@@ -8,7 +8,9 @@
     "metadata": {
         "description": "",
         "pages": [
-            "View Panel"
+            "View Panel",
+            "Dashboard",
+            "Reports"
         ],
         "certified": "No",
         "publisher": "Dylan Spille",

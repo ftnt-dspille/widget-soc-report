@@ -13,6 +13,9 @@
                 <span class="change-number-badge" data-ng-if="changeNumber">
                     {{ changeNumber }}
                 </span>
+                <span class="context-badge" data-ng-if="recordInfo.loadMethod">
+                    {{ recordInfo.loadMethod }}
+                </span>
             </h5>
         </div>
         <div class="widget-controls padding-right-lg" style="background: transparent !important;">
@@ -34,16 +37,47 @@
     </div>
     <div class="clearfix"></div>
 
+    <!-- Context Information -->
+    <div class="context-info padding-left-lg padding-right-lg margin-bottom-sm" data-ng-if="recordInfo.loadMethod">
+        <div class="context-details">
+            <span class="context-item">
+                <i class="icon icon-info-circle margin-right-xs"></i>
+                <strong>Source:</strong> {{ getUsageModeText() }}
+            </span>
+            <span class="context-item" data-ng-if="recordInfo.module">
+                <i class="icon icon-database margin-right-xs"></i>
+                <strong>Module:</strong> {{ recordInfo.module }}
+            </span>
+            <span class="context-item" data-ng-if="recordInfo.queryFilters">
+                <i class="icon icon-filter margin-right-xs"></i>
+                <strong>Filters:</strong> {{ recordInfo.queryFilters }} condition(s)
+            </span>
+        </div>
+    </div>
+
     <!-- Loading State -->
     <div class="loading-state text-center padding-top-xl padding-bottom-xl" data-ng-if="loading">
         <cs-spinner class="state-wait" data-show-background="true"></cs-spinner>
-        <div class="loading-text font-size-14 margin-top-sm">Loading revision report...</div>
+        <div class="loading-text font-size-14 margin-top-sm">
+            <span data-ng-if="recordInfo.loadMethod === 'Query'">Searching for record...</span>
+            <span data-ng-if="recordInfo.loadMethod === 'Detail Page'">Loading revision report...</span>
+            <span data-ng-if="!recordInfo.loadMethod">Loading...</span>
+        </div>
     </div>
 
     <!-- Error State -->
     <div class="error-state alert alert-warning margin-lg" data-ng-if="!loading && error">
         <i class="icon icon-warning margin-right-sm"></i>
         <strong>Error:</strong> {{ error }}
+        <div class="error-actions margin-top-sm" data-ng-if="!isViewPanel">
+            <small class="text-muted">
+                <strong>Troubleshooting tips for dashboard/report usage:</strong><br>
+                • Ensure the selected module contains records with the specified field<br>
+                • Check that query filters match existing records<br>
+                • Verify the data source field contains valid JSON data<br>
+                • Make sure the change number field is populated in the target record
+            </small>
+        </div>
     </div>
 
     <!-- Report Content -->
@@ -99,40 +133,40 @@
             <div class="summary-table">
                 <table class="table table-hover">
                     <thead>
-                        <tr>
-                            <th class="device-col">Device Name</th>
-                            <th class="count-col text-center">Total Revisions</th>
-                            <th class="matches-col text-center">CHG Matches</th>
-                            <th class="percent-col text-center">Match Rate</th>
-                        </tr>
+                    <tr>
+                        <th class="device-col">Device Name</th>
+                        <th class="count-col text-center">Total Revisions</th>
+                        <th class="matches-col text-center">CHG Matches</th>
+                        <th class="percent-col text-center">Match Rate</th>
+                    </tr>
                     </thead>
                     <tbody>
-                        <tr data-ng-repeat="device in getDevicesWithCounts()">
-                            <td class="device-col">
+                    <tr data-ng-repeat="device in getDevicesWithCounts()">
+                        <td class="device-col">
                                 <span class="device-name">
                                     <i class="icon icon-server margin-right-xs"></i>{{ device.device }}
                                 </span>
-                            </td>
-                            <td class="count-col text-center">
-                                <span class="revision-count">{{ device.total }}</span>
-                            </td>
-                            <td class="matches-col text-center">
+                        </td>
+                        <td class="count-col text-center">
+                            <span class="revision-count">{{ device.total }}</span>
+                        </td>
+                        <td class="matches-col text-center">
                                 <span class="match-count" data-ng-class="{'has-matches': device.matches > 0}">
                                     {{ device.matches }}
                                 </span>
-                            </td>
-                            <td class="percent-col text-center">
-                                <div class="progress-container">
-                                    <div class="progress">
-                                        <div class="progress-bar"
-                                             data-ng-class="device.matches > 0 ? 'progress-bar-warning' : 'progress-bar-default'"
-                                             style="width: {{ (device.matches / device.total * 100) || 0 }}%">
-                                        </div>
+                        </td>
+                        <td class="percent-col text-center">
+                            <div class="progress-container">
+                                <div class="progress">
+                                    <div class="progress-bar"
+                                         data-ng-class="device.matches > 0 ? 'progress-bar-warning' : 'progress-bar-default'"
+                                         style="width: {{ (device.matches / device.total * 100) || 0 }}%">
                                     </div>
-                                    <span class="percent-text">{{ ((device.matches / device.total * 100) || 0).toFixed(1) }}%</span>
                                 </div>
-                            </td>
-                        </tr>
+                                <span class="percent-text">{{ ((device.matches / device.total * 100) || 0).toFixed(1) }}%</span>
+                            </div>
+                        </td>
+                    </tr>
                     </tbody>
                 </table>
             </div>
@@ -177,7 +211,7 @@
                     <!-- Comments Section -->
                     <div class="revision-comments" data-ng-if="record.comments">
                         <div class="field-label">Comments:</div>
-                        <div class="field-content" data-ng-bind-html="highlightCHG(record.comments)"></div>
+                        <div class="field-content">{{ record.comments}} </div>
                     </div>
 
                     <!-- Additional Details -->
@@ -223,7 +257,11 @@
             <i class="icon icon-database"></i>
         </div>
         <h5 class="empty-title">No Data Available</h5>
-        <p class="empty-text">No revision data found in the selected field.</p>
+        <p class="empty-text">
+            <span data-ng-if="recordInfo.loadMethod === 'Query'">No records found matching the query filters, or the selected field contains no data.</span>
+            <span data-ng-if="recordInfo.loadMethod === 'Detail Page'">No revision data found in the selected field.</span>
+            <span data-ng-if="!recordInfo.loadMethod">No revision data found.</span>
+        </p>
     </div>
 </div>
 
@@ -254,6 +292,7 @@
         display: flex;
         align-items: center;
         gap: 10px;
+        flex-wrap: wrap;
     }
 
     .chg-report-widget .change-number-badge {
@@ -264,6 +303,39 @@
         font-size: 12px;
         font-weight: 500;
         font-family: monospace;
+    }
+
+    .chg-report-widget .context-badge {
+        background: rgba(255, 255, 255, 0.1);
+        color: inherit;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Context Information */
+    .chg-report-widget .context-info {
+        background: rgba(0, 123, 255, 0.05);
+        border: 1px solid rgba(0, 123, 255, 0.1);
+        border-radius: 4px;
+        padding: 8px 12px;
+    }
+
+    .chg-report-widget .context-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        font-size: 12px;
+    }
+
+    .chg-report-widget .context-item {
+        display: flex;
+        align-items: center;
+        color: inherit;
+        opacity: 0.8;
     }
 
     .chg-report-widget .widget-controls {
@@ -298,6 +370,12 @@
         background: rgba(255, 193, 7, 0.1);
         border: 1px solid rgba(255, 193, 7, 0.3);
         border-radius: 6px;
+    }
+
+    .chg-report-widget .error-actions {
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+        padding: 8px;
     }
 
     /* Summary Section */
@@ -696,9 +774,6 @@
         font-size: 14px;
     }
 
-    /* Remove Dark Mode Support section since we're already optimizing for dark theme */
-    /* The styles above are already optimized for dark themes */
-
     /* Responsive Design */
     @media (max-width: 768px) {
         .chg-report-widget .stats-row {
@@ -744,6 +819,21 @@
         .chg-report-widget .percent-text {
             text-align: left;
         }
+
+        .chg-report-widget .context-details {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chg-report-widget .widget-title {
+            font-size: 14px;
+        }
+
+        .chg-report-widget .change-number-badge,
+        .chg-report-widget .context-badge {
+            font-size: 10px;
+            padding: 1px 6px;
+        }
     }
 
     /* Print Styles */
@@ -760,6 +850,11 @@
         .chg-report-widget .revision-card {
             box-shadow: none;
             border: 1px solid #ddd;
+        }
+
+        .chg-report-widget .context-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
         }
     }
 </style>
