@@ -92,7 +92,7 @@
                                 <div class="cs-select">
                                     <select name="selectedField" id="selectedField" class="form-control"
                                             data-ng-model="config.selectedField"
-                                            data-ng-options="field.name as (field.title + ' (' + field.type + ')') for field in fields"
+                                            data-ng-options="field.name as (field.title + ' (' + field.type + ')') for field in dataSourceFields"
                                             required>
                                         <option value="">Select a field</option>
                                     </select>
@@ -130,7 +130,7 @@
                         </div>
                     </div>
 
-                    <div class="row margin-bottom-sm" data-ng-if="fields.length === 0 && config.module">
+                    <div class="row margin-bottom-sm" data-ng-if="dataSourceFields.length === 0 && config.module">
                         <div class="col-md-12">
                             <div class="alert alert-warning">
                                 <i class="icon icon-warning margin-right-sm"></i>
@@ -147,20 +147,28 @@
                     <h6>Record Selection Query</h6>
                     <p class="text-muted">Configure filters to identify which record contains the SOC report data</p>
 
-                    <div class="form-group" data-ng-if="config.module && fields.length > 0">
-                        <label for="resource" class="control-label">Filter Criteria<span
-                                class="text-danger">*</span></label>
-                        <span data-uib-tooltip="Define filters to identify the specific record containing the SOC report data"
-                              data-tooltip-append-to-body="true">
-                            <i class="margin-left-sm icon icon-information font-Size-13"></i>
-                        </span>
-                        <div data-cs-conditional data-mode="'queryFilters'"
-                             data-fields="fields" data-ng-model="config.query"
-                             data-parent-form="editSocreportForm"
-                             data-enable-expression="true"
-                             data-form-name="'editSocreportForm'"></div>
-                        <small class="text-muted">Example: Filter by a specific record ID, name, or other identifying
-                            field</small>
+                    <!-- Filter Criteria -->
+                    <div data-ng-hide="!config.module || !fieldsArray || fieldsArray.length === 0">
+                        <div class="form-group"
+                             data-ng-class="{ 'has-error': editSocreportForm.filters.$invalid && editSocreportForm.filters.$touched }">
+                            <label for="filters" class="control-label">Filter Criteria<span class="text-danger">*</span></label>
+                            <span data-uib-tooltip="Define filters to identify the specific record containing the SOC report data"
+                                  data-tooltip-append-to-body="true">
+                                <i class="margin-left-sm icon icon-information font-Size-13"></i>
+                            </span>
+                            <div data-cs-conditional data-ng-if="fieldsArray.length > 0"
+                                 data-fields="$parent.fields"
+                                 data-mode="'queryFilters'"
+                                 data-ng-model="$parent.config.query"
+                                 data-parent-form="editSocreportForm"
+                                 data-enable-expression="(page==='dashboard' || page==='reporting')"
+                                 data-reset-field="$parent.fields"
+                                 data-show-uuid="true"
+                                 data-form-name="'editSocreportForm'"></div>
+                            <div data-cs-messages="editSocreportForm.filters"></div>
+                            <small class="text-muted">Example: Filter by a specific record ID, name, or other
+                                identifying field</small>
+                        </div>
                     </div>
 
                     <div class="alert alert-info" data-ng-if="!config.module">

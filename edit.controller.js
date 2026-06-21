@@ -14,6 +14,7 @@
         $scope.cancel = cancel;
         $scope.save = save;
         $scope.config = config;
+        $scope.page = $state.params.page;
         $scope.loadFields = loadFields;
         $scope.loadModules = loadModules;
         $scope.onModuleChange = onModuleChange;
@@ -47,6 +48,7 @@
 
         $scope.fields = [];
         $scope.changeNumberFields = [];
+        $scope.dataSourceFields = [];
         $scope.modules = [];
         $scope.currentModule = $state.params.module;
         $scope.debugInfo.currentModule = $scope.currentModule;
@@ -106,14 +108,18 @@
                 // Reset field selections when module changes
                 $scope.config.selectedField = '';
                 $scope.config.changeNumberField = '';
-                $scope.fields = [];
+                $scope.config.query = null; // Reset query when module changes
+                $scope.fieldsArray = [];
+                $scope.dataSourceFields = [];
                 $scope.changeNumberFields = [];
+                $scope.fields = {}; // Reset fields object for conditional directive
 
                 loadFields();
             }
         }
 
-        function loadFields() {
+
+       function loadFields() {
             var moduleToLoad = $scope.config.module || $scope.currentModule;
 
             console.log('loadFields() called with module:', moduleToLoad);
@@ -134,48 +140,36 @@
                 console.log('Entity fields loaded successfully');
                 $scope.debugInfo.entityLoaded = true;
 
-                // Get all fields
-                var formFields = entity.getFormFields();
-                console.log('Form fields retrieved:', formFields);
-                console.log('Number of form fields:', Object.keys(formFields).length);
-                $scope.debugInfo.totalFields = Object.keys(formFields).length;
+                // Get fieldsArray for dropdowns (like data visualization widget)
+                $scope.fieldsArray = entity.getFormFieldsArray();
 
-                // Reset fields array
-                $scope.fields = [];
-                $scope.changeNumberFields = [];
-                var validFieldCount = 0;
+                // Get fields object for conditional directive (like data visualization widget)
+                $scope.fields = entity.getFormFields();
+                angular.extend($scope.fields, entity.getRelationshipFields());
 
-                angular.forEach(formFields, function (field, fieldName) {
-                    console.log('Processing field:', fieldName, 'Type:', field.type, 'Field object:', field);
+                console.log('Fields array for dropdowns:', $scope.fieldsArray);
+                console.log('Fields object for conditional directive:', $scope.fields);
+                console.log('Number of fields in array:', $scope.fieldsArray.length);
+                console.log('Number of fields in object:', Object.keys($scope.fields).length);
 
-                    // Include text, textarea, and object fields for data source
-                    if (field.type === 'text' || field.type === 'textarea' || field.type === 'object') {
-                        $scope.fields.push({
-                            name: fieldName,
-                            title: field.title || fieldName,
-                            type: field.type
-                        });
-                        validFieldCount++;
-                        console.log('Added valid field:', fieldName, 'type:', field.type);
-                    }
+                $scope.debugInfo.totalFields = $scope.fieldsArray.length;
 
-                    // Include text, textarea, and string fields for change number
-                    if (field.type === 'text' || field.type === 'textarea' || field.type === 'string') {
-                        $scope.changeNumberFields.push({
-                            name: fieldName,
-                            title: field.title || fieldName,
-                            type: field.type
-                        });
-                    }
+                // Filter fieldsArray for data source fields (text, textarea, object)
+                $scope.dataSourceFields = $scope.fieldsArray.filter(function(field) {
+                    return field.type === 'text' || field.type === 'textarea' || field.type === 'object';
                 });
 
-                $scope.debugInfo.validFields = validFieldCount;
-                console.log('Total valid fields added to dropdown:', $scope.fields.length);
-                console.log('Valid field types found:', validFieldCount);
-                console.log('Fields for dropdown:', $scope.fields);
+                // Filter fieldsArray for change number fields (text, textarea, string)
+                $scope.changeNumberFields = $scope.fieldsArray.filter(function(field) {
+                    return field.type === 'text' || field.type === 'textarea' || field.type === 'string';
+                });
+
+                $scope.debugInfo.validFields = $scope.dataSourceFields.length;
+                console.log('Data source fields:', $scope.dataSourceFields.length);
+                console.log('Change number fields:', $scope.changeNumberFields.length);
 
                 // Sort fields alphabetically by title
-                $scope.fields.sort(function (a, b) {
+                $scope.dataSourceFields.sort(function (a, b) {
                     return a.title.localeCompare(b.title);
                 });
 
@@ -183,25 +177,20 @@
                     return a.title.localeCompare(b.title);
                 });
 
-                // Use $timeout instead of $apply to avoid digest cycle conflicts
-                if (!$scope.$phase && !$scope.$root.$phase) {
-                    $scope.$apply();
-                } else {
-                    console.log('Digest cycle already in progress, skipping $apply');
-                }
+//                // Use $timeout instead of $apply to avoid digest cycle conflicts
+//                if (!$scope.$phase && !$scope.$root.$phase) {
+//                    $scope.$apply();
+//                } else {
+//                    console.log('Digest cycle already in progress, skipping $apply');
+//                }
 
-                toaster.success({
-                    body: 'Loaded ' + $scope.fields.length + ' compatible fields from module ' + moduleToLoad
-                });
+//                toaster.success({
+//                    body: 'Loaded ' + $scope.fields.length + ' compatible fields from module ' + moduleToLoad
+//                });
 
             }).catch(function (error) {
                 console.error('Error loading entity fields:', error);
                 $scope.debugInfo.error = 'Failed to load fields: ' + (error.message || error);
-
-                // Use $timeout for error handling too
-                if (!$scope.$phase && !$scope.$root.$phase) {
-                    $scope.$apply();
-                }
 
                 toaster.error({
                     body: 'Failed to load fields: ' + (error.message || error)
@@ -260,9 +249,7 @@
         }
 
         function _init() {
-            $timeout(function () {
-                loadModules();
-            }, 100);
+            loadModules();
         }
 
         _init();
